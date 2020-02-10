@@ -1,4 +1,37 @@
-# Control
+# 48V Bus Link
+
+::: warning In Progress
+This chapter is incomplete - still being written/defined.
+:::
+
+This section addresses the electrical and communications properties of an Open DC Grid links
+implemented as a DC bus with a nominal voltage of 48V. A bus connection means that multiple devices
+are electrically connected via wires and will observe roughly the same electrical potential
+though the actual observed potential may differ between devices due to resistive drops on the wires.
+
+The actual wiring may be in a variety of topological configurations such as:
+
+- point to point - two ports connect with a single link
+- star where all drops are connected at a single point
+- linear configuration with multiple taps branching from a distribution
+- tree-like configuration with multiple branch points fanning out into a web of connections.
+
+## Electrical Requirements
+
+## Bus control
+
+## Bus communications
+
+Defines the link level protocols.
+
+### CAN Bus Implementation
+
+TBD
+
+### Power Line Networking
+
+IEEE 1901.2?
+
 
 The main system level functions of the DC grid are:
 
