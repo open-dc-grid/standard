@@ -1,4 +1,10 @@
-# Goals and Objectives
+# Introduction
+::: warning In Progress
+This chapter is incomplete - still being written/defined.
+:::
+
+
+## Goals and Objectives
 
 This standard is a generic electrical interface that can be used whenever devices need to send, receive or exchange DC power.
 Its focus, however, is on devices used for entry level off-grid power such as charge controllers, battery systems, DC appliances and AC inverters for attaching normal AC appliances.
@@ -28,3 +34,87 @@ These benefits have to overcome the higher costs implicit in a standard interfac
 This standard directly addresses the inflexibility issue but can only do so if the resulting SHSs can ultimately be reasonably price competitive with fixed function SHSs as seen by the end user. A key part of that flexibility needs to be the ability to add AC power sources to defuse the “national grid will be here any day” barrier and AC inverters to expand the market of appliances and tools available to end users.
 
 Likewise, the standard attacks the complexity issue by reducing the number of proprietary interfaces that must be understood. It includes enough functionality that resellers don’t have to add another layer of proprietary functionality on top of the standard to deliver their core service. Resellers can add capabilities like customer relationship software on top of the standard as long as they are built using standards-based interfaces to lower level functionality like monitoring and PAYGO key management. Scalability is important for the complexity issue too because it means resellers can build up systems adaptively without having to engineer a perfect solution at the start.
+
+## Requirements
+
+::: warning Temporary
+This section will not be part of the final standard. It's here to guide the development.
+:::
+
+As a high-level requirement, the nanogrid should provide the following features:
+
+- Interconnect households in off-grid areas or devices on building level
+- Plug-and play operation
+- Safe (<60 V) and reliable
+
+### Power demands
+
+Focus on expected power per household grid connection (t.b.c.):
+
+- 250 W peak
+- 50 W avg
+
+The power level can be higher if the connection between energy storage/source and load is short.
+
+Devices depending on site type:
+
+- Households
+  - Lighting, phone charging, radio, TV
+- Productive use
+  - Printer, laptop, mills, welding machines
+  - Loads with high peak power need local battery for buffering.
+- Shops
+  - Lighting, phone charging as business, radio, TV, fridge
+
+### Safety
+
+The standard should focus on links that are safe but may incorporate higher power links that operate at dangerous voltages.
+
+48V nominal bus - grid voltage always below 60V (SELV = safe to touch).
+
+Protection against
+
+- Short circuit
+- Overcurrent
+- Reverse polarity during assembly
+- Arcing
+
+### Metering
+
+Accuracy: t.b.d.
+
+Tempering protection should be implemented.
+
+### Easy to use
+
+Automatic recovery after fault conditions.
+
+Simple and straightforward installation.
+
+### Reliability
+
+Mesh topology should be supported to provide redundant current paths.
+
+### Non-intelligent Loads and/or Sources
+
+The standard needs a way to incorporate non-intelligent loads. This may be satisfied by defining ports that incorporate power limits but do not otherwise participate in power allocation negotiations.
+
+Provisions for non-intelligent sources aren TBD but may also be in the form of ports that bridge to the managed domain.
+
+### Backwards Compatibility
+
+The standard may incorporate multiple revisions with enhanced functionality.
+The standard must allow devices conforming to previous versions to participate in grids based on newer standards, possibly at reduced functionality compared to newer devices.
+
+### Standalone operation
+
+Grids must provide core functionality without connection to the global Internet.  
+For specialize management functions such as PAYGO, the standard must define a way to enter data without an Internet connection.
+Resellers may choose to not use such functionality for their systems.
+
+### Hacker protection
+
+The standard must recognize the risk that hackers pose to managed grids.
+It must incorporate mechanisms such as digital signatures to permit safe firmware updates limited to authorized sources.
+The standard will include a physical mechanism such as a jumper to disable firmware updates.
+The standard should define a way to disable intelligent operation and revert to an unmanaged grid with potentially reduced functionality such single sources.
