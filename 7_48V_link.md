@@ -1,4 +1,4 @@
-# 48V Bus Link
+# 48V Link
 
 ::: warning In Progress
 This chapter is incomplete - still being written/defined.

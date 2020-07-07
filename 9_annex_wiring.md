@@ -1,4 +1,4 @@
-# Annex A: Wiring Recommendations
+# Annex B: Wiring Recommendations
 
 ::: warning In Progress
 This chapter is incomplete - still being written/defined.
@@ -7,10 +7,6 @@ This chapter is incomplete - still being written/defined.
 
 This makes recommendations for wiring devices in an Open DC Grid. These recommendations are not
 formally part of the standard.
-
-::: warning ToDo
-Incorporate parts of P2030.10.
-:::
 
  ## Critical Use Cases
 
