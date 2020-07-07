@@ -12,25 +12,34 @@ control that manages how power is moved and allocated to devices. Microgrids hav
 to a national AC grid though they may be connected to the AC grid intermittently or even permanently.
 
 Devices in the microgrid are connected with wired links. The point of connection between a device and the external wiring of the grid is referred to as a grid port.
-A grid port can source power, consume power or both. Links can be point-to-point as a direct wire between one port on each device.
+A grid port can source power, consume power or both. Links can be point-to-point as a direct wire between one port on each device:
 
-::: warning Need picture
+<center>
 
-Direct connection picture
+![Example of a point to point link](./images/Point+to+Point+Example.svg)
 
-:::
+</center>
 
-Links can also be bussed, meaning that multiple ports can be attached to a common backbone such as a distribution cable or bus bar.
+Links can also be bussed, meaning that multiple ports can be attached to a common backbone such as a distribution cable or bus bar:
 
-::: warning Need picture
+<center>
 
-A bus configuration picture
+![Example of a bus link](./images/48V+Grid+Model.svg)
 
-:::
+</center>
 
 A device can have multiple grid ports permitting the device to participate in multiple links.
 
 Devices with multiple ports permit the microgrid to have various configurations such as a series of point to point links, sometimes referred to as a "daisy chain":
+
+<center>
+
+![Example of a daisy chain](./images/Daisy+Chain+Example.svg)
+
+</center>
+
+In this example, the 48V link and the 12V link connect standard conforming ports while the connections between the solar array to the power source,
+and the battery to the DC-DC converter are not standard conforming. The devices convert the non-conforming ports to conforming ports. 
 
 Or an arbitrary combination of links forming a mesh that may contain loops:
 
