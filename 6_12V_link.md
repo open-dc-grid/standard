@@ -66,6 +66,22 @@ operate when connected to an ISO power source. Most of the ISO test requirements
 also apply to ODG 12V Link conforming devices but some extreme requirements
 specific to the automotive environment are not required of ODG 12V Link devices.
 
+The ODG 12V Link supports communications between devices attached to the bus
+through a variation of the LIN Bus used for low-speed communications in automobiles.
+This communications interface is optional for load devices but required for
+power sources except for AC adapters. These communications are used to
+manage a bus with more than one power source,
+implement priority allocation of power to loads, and for the remote management
+of appliances or other loads that choose to implement it including PAYG.
+The communications system includes the concept of a functional bus manager
+but this function is not restricted to a particular physical device
+as with a typical LIN Bus and can potentially be shifted between devices
+as needed when devices are attached or removed from the bus.
+While capable of general purpose messages, this communication system is intended
+primarily for bus management and should not be considered a substitute
+for high speed communications through WiFi or other technologies.
+Communications details are provided in the following sections. 
+
 ## Port Types
 
 As defined the the architecture section, this standard defines a port as
@@ -118,10 +134,17 @@ The following table of symbols applies to all parts of this section:
 | V<sub>min_l</sub> | 10 V | minimum voltage for loads operating normally |
 | V<sub>min_c</sub> | 9 V | minimum voltage for communications circuits |
 | V<sub>reverse</sub> | -25 V | minimum reverse protected voltage |
+| V<sub>AC</sub> | 1 V P-P | minimum AC noise protection |
+| V<sub>dropout</sub> | 4.5 V | maximum voltage during drop-out protection test |
 | I<sub>max</sub> | 8 A | maximum current through a connector |
 | I<sub>sleep</sub> | 10 mA | maximum load current in sleep mode |
-| I<sub>disconnect</sub> | 1 mA | maximum load current in disconnect mode |
-
+| I<sub>disconnect</sub> | 100 uA | maximum load current in disconnect mode |
+| f<sub>AC_min</sub> | 50 Hz | minimum frequency of AC noise test |
+| f<sub>AC_max</sub> | 25 kHz | maximum frequency of AC noise test |
+| t<sub>dropout</sub> | 0.1 s | time of the voltage drop-out test |
+| t<sub>sleep</sub> | 5 s | maximum delay before entering sleep state |
+| t<sub>LED_sleep</sub> | 5 s | period the status LED sleeps |
+| t<sub>LED_delay</sub> | 60 s | delay until the LED goes to sleep  |
 
 ### Voltage and Over-voltage Protection
 
@@ -146,19 +169,28 @@ If implemented on a device, communications circuits are expected to operate norm
 voltage is in the range V<sub>min_c</sub> to V<sub>max_l</sub>. When receiving less than V<sub>min_c</sub>,
 devices shall enter disconnect mode and draw negligible current.
 
-All ports except AC adapter ports shall implement over-voltage protection.
-The required protection level is defined by a series of tests given in Appendix TBD
+Note that devices are expected to delay entering the sleep or disconnect states to
+prevent the interruption of normal operation during temporary voltage dropouts (see below).
+The delay before entering a sleep state must be at least t<sub>dropout</sub> but no
+longer than t<sub>sleep</sub>. 
+
+All ports except AC adapter ports shall implement sustained over-voltage protection to V<sub>ovp</sub>.
+This protection applies to both negative and positive poles as well as the communications signal.
+During the over-voltage, the device is not required to maintain normal operation (Functional Status 1),
+but may enter a less functional state (Functional Status 3). When the voltage returns to normal
+limits the device must resume normal operation (Functional Status 1) with no intervention by the user.
+Details of the required conformance test are given in Appendix C.
 that include stress pulses of various voltage peaks, durations and repetitions.
 
 Source ports and bidirectional ports operating as sources shall limit the voltage overshoot to less than V<sub>ovs</sub>
-when a load is disconnected. Test conditions are given in Appendix TBD and require the disconnect
+when a load is disconnected. Test conditions are given in Appendix C and require the disconnect
 of the maximum rated load for the port.
 
 Load ports and bidirectional ports receiving power shall limit conducted emissions
 to voltages less than V<sub>cond</sub>. This is normally only relevant to inductive loads.
 Test conditions are given in Appendix C.
 
-### Current and Over-current Protection
+### Current
 
 The maximum current supplied by a source or bidirectional port, or consumed by a load 
 through a connector shall be I<sub>max</sub>.
@@ -167,21 +199,40 @@ A source or bidirectional port is not required to provide any minimum level of c
 A device in sleep mode shall reduce its current consumption to I<sub>sleep</sub> or less.
 A device in disconnect mode shall reduce its current consumption to I<sub>disconnect</sub> or less.
 
-Devices requiring current in excess of I<sub>max</sub> may exceed these current limits 
+Devices requiring current in excess of I<sub>max</sub> 
+or sources providing more current may exceed these current limits 
 if they provide alternate means of connection such as screw terminals. Such devices
 shall conform to all voltage requirements and shall describe their wiring requirements
-in their documentation. They shall provide over-current protection suitable to protect
+in their documentation. Sources shall provide over-current protection suitable to protect
 the wiring and connections as described in their documentation. They shall also
 implement the sleep mode and disconnect mode current limits.
 
 All devices supplying power through a source or bidirectional port shall implement communications over those ports.
 Devices offering non-standard connections such as screw terminals shall include terminals
-for communications that is electrically compatible with the communications signaling.
+for communications that is compatible with the connector-based communications signaling.
 
-Note that a bus can have more than one power source so the total current available may be more than I<sub>max</sub>.
-Installations shall be configured for a maximum of I<sub>max</sub> from all sources if they use standard wiring.
-If an installation is configured to supply more than I<sub>max</sub> on a single bus, 
-it shall use wiring capable of supporting the maximum current for which the installation is configured. 
+More than one power source can be attached to a bus. To allocate current fairly between sources, all sources
+shall implemented droop control. [Details TBD.] 
+
+Communications signaling between sources is used to limit the
+the maximum current flow through the bus wiring.
+All source devices shall have the capability of limiting their maximum current output
+to a level designated in a configuration message from the current bus manager. 
+By default, the maximum current from all sources shall be limited to I<sub>max</sub>.
+The maximum current from all sources in an installation shall be configurable to
+level higher than I<sub>max</sub> through appropriate management software
+if a trained installer can ensure that the wiring can support the higher current.
+It is the responsibility of the current bus manager (see TBD) to ensure that all power sources
+are appropriately configured to the designed bus current limit.
+
+[Should we permit non-droop control sources on a bus? A device could identify itself as either
+being droop controlled or not. A not droop control source would not permit any other sources on the bus.]
+
+The maximum current of an AC adapter port is not defined by this standard.
+It is the responsibility of the load to ensure that it does not draw enough
+current to damage its connector or wiring.
+
+### Over-current Protection
 
 A port sourcing power shall include over-current protection to prevent damage to the device in the event
 of a fault that shorts the positive pole to the negative pole for an unlimited time period.
@@ -205,8 +256,6 @@ but not required. If the device supports communications, it is recommended that 
 be implemented such that communications remain operating even when the primary over-current protection
 has disabled the device so the device may report the fault condition.
 
-The maximum current of an AC adapter port is not defined by this standard.
-
 The communications protocol is defined to have an inherent maximum current of TBD A
 by sourcing current through a TBD ohm pull-up resistors.
 For more details, see section TBD.
@@ -223,10 +272,32 @@ and LED located near the port as described in section TBD. ??? ]
 
 [ Capacitor overloads ?? ]
 
+### Grid Overload and Fault Isolation
+
+Many circumstances can cause the overall power demand from loads to exceed the power available from sources.
+In the simple case with a source supplying power to non-communicating loads wired to a common bus
+this can manifest as an over-current condition analogous to blowing a fuse on a normal AC grid.
+The source must use its normal over-current protection and disconnect current flow.
+
+A managed grid like ODG has more options. If its sources have multiple ports that can controlled
+independently, it may be able via current monitoring to isolate the overload to one port
+and disconnect that port while leaving the others functioning. If the load on each
+port is below I<sub>max</sub> but the aggregate exceeds the current capacity of the source,
+it may choose to shut down a subset of its ports on a priority basis.
+
+Communicating loads give the source or sources more options. Among the parameters that
+a communicating load is required to supply is its normal power demand. The grid can selectively
+prioritize loads using administrative configuration.
+
+[More TBD]
+
 ### Reverse Polarity Protection
 
 All ports shall implement reverse polarity protection so that the device is not damaged
 when connected to a voltage source of V<sub>reverse</sub> for an indefinite period.
+When connected with reverse polarity, the device is not expected to function (Functional Status 3)
+but must resume normal operation (Functional Status 1) when correct polarity is re-applied
+with no intervention by the user required.
 
 If a port supports communications, recommended that the communications logic
 be powered by a full-bridge rectifier so that it will continue to operate
@@ -238,7 +309,66 @@ illuminate red with the power poles are reversed.
 
 ### Drop-out Protection
 
-[TBD]
+Various conditions as when new loads are attached
+may cause the bus to temporarily drop to a lower than normal voltage,
+a condition known as voltage dropout.
+Load devices are expected continue to operate normally (Functional Status 1)
+during voltage dropouts. During the test to verify the device,
+voltage is lowered to V<sub>dropout</sub> for a period t<sub>dropout</sub>
+and then return to normal.
+Details of the conformance test are given in Appendix C.
+
+### Noise Immunity
+
+Load devices are expected normally (Functional Status 1) when an AC voltage of V<sub>AC</sub> is superimposed
+on their normal supply voltage. This AC voltage can be any frequency between f<sub>AC_min</sub>
+and f<sub>AC_max</sub>. Details of the conformance test are given in Appendix C.
+
+### Slow Rise and Fall of Supply Voltage
+
+Load devices are expected to transition through levels of function when the voltage they
+receive increase or decrease slowly as might be expected from a battery charging or discharging.
+From 0 volts to V<sub>min_c</sub>, the device is expected to be in the disconnect state
+drawing negligible current. It may have no apparent function. From V<sub>min_c</sub> to V<sub>min_l</sub>
+it should be in the sleep state such that communications is operating normally (Functional Status 1)
+but the devices primary function may not be available (Functional Status 3). It must enter
+normal operation (Functional Status 1) when the voltage enters the normal operating range of V<sub>min_l</sub>
+to V<sub>max_l</sub>. The reverse sequence must occur when the supply voltage begins to decrease.
+As part of its drop-out protection the device is may delay changing to a higher functional
+for a period no more than V<sub>dropout</sub>. While the voltage is dropping, the device
+must enter the sleep or disconnect state within t<sub>sleep</sub>. 
+Details of the conformance test are given in Appendix C.
+
+There is another test requiring that the device maintain the proper operational state when
+the supply voltage fluctuates to progressively lower level and then returns to normal
+in steps with a period of t<sub>sleep</sub> or greater.  
+Again, test details are provided in the appendix.
+
+### Starting Profile
+
+[TBD - is this test needed?]
+
+### Transient Immunity
+
+Various conditions may trigger brief voltage spikes that exceed the normal over-voltage protection
+for brief periods. In the the automobile environment, the requirements for transient immunity are
+given by ISO 7637.
+
+[ODG requirements TBD.]
+
+### Open Circuit
+
+Disruptions during wiring and maintenance of a grid may cause some circuits to open in unexpected ways.
+For example, the communications signal may be connected when either the positive or negative power
+circuit is disconnected. The device shall be undamaged but potentially non-functional (Functional Status 3)
+under all combinations of attached wiring.
+
+A load device that implements communications but does receive the normal communications recessive signal
+shall assume that it is connected to a non-standard power source. It should perform all its normal
+functions. One exception is a device that implements PAYG whose payment token is expired. In this case
+it should indicate this condition to users using the methods in section TBD.
+ 
+Details of the conformance test are given in Appendix C.
 
 ### Galvanic Isolation
 
@@ -263,14 +393,52 @@ This isolation breaks the ground loop and solves the problem.
 
 ### Cold Start
 
-[TBD]
+[ Use communications to stage power on. TBD]
 
 ### Port Labeling
 
-[TBD]
+[ Use ODG label with separate icon for load, source or bidirectional. Power consumption or supply in Watts. TBD]
+
+### Port Status Indicator
+
+All devices implementing a 12V Link port shall indicate the status of that port with a multicolor LED using
+the following predetermined patterns. Load devices only need a two-color LED that can display green, red
+or amber (both green and red on). Source-only devices need a blue / red LED. Bidirectional ports need
+an LED that includes red, blue and green. 
+
+To minimize power consumption, the LED shall be in an awake state
+or a sleep state, states that are independent of the overall device state except that the LED shall be off
+and consuming no power when the device is in the disconnect state. 
+In the awake state the LED is illuminated but indicating additional status details via a pulsing
+pattern to repeats in a period of t<sub>LED_sleep</sub>. In the sleep state the LED is off but
+awakens to display its status in a period t<sub>LED_sleep</sub>, the inverse pattern of the awake state.
+The LED shall be in its awake state whenever the device transitions into its normal operating state.
+The LED shall transition to its sleep state after t<sub>LED_delay</sub>, even if the device itself
+is operating normally.
+
+| Color | Blink Dots | Description |
+|--------|:-----:|-------------|
+| Green | 1 | load receiving normal power |
+| Green | 2 | load receiving normal power but without communications |
+| Amber | 1 | load or source voltage below V<sub>min_l</sub> (sleep) |
+| Amber | 2 | load with insufficient priority for power |
+| Amber | 3 | load or source PAYG disabled |
+| Red | 1 | source over-current |
+| Red | 2 | reverse polarity |
+| Red | 3 | overvoltage or device malfunction |
+| blue | 1 | source suppling normal power |
+| blue | 2 | source suppling normal power but without communications |
+  
 
 ### Communications
 
+[LIN physical with ODGTalk link layer. Details to follow. ]
+
 ### 1-Wire Communications
+
+[ Laptop power adapters typically include an identification ROM in the power supply that can be read by
+the load using the 1-Wire protocol. Currently the content of these ROMs are all proprietary. We could
+propose a standard for this content. I think a smart load could attempt 1-Wire to determine
+if the source is compatible and if that fails, attempt to initiate ODG communications. ]
 
 
