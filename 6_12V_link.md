@@ -214,6 +214,9 @@ for communications that is compatible with the connector-based communications si
 More than one power source can be attached to a bus. To allocate current fairly between sources, all sources
 shall implemented droop control. [Details TBD.] 
 
+[Should we permit non-droop control sources on a bus? A device could identify itself as either
+being droop controlled or not. A not droop control source would not permit any other sources on the bus.]
+
 Communications signaling between sources is used to limit the
 the maximum current flow through the bus wiring.
 All source devices shall have the capability of limiting their maximum current output
@@ -225,12 +228,9 @@ if a trained installer can ensure that the wiring can support the higher current
 It is the responsibility of the current bus manager (see TBD) to ensure that all power sources
 are appropriately configured to the designed bus current limit.
 
-[Should we permit non-droop control sources on a bus? A device could identify itself as either
-being droop controlled or not. A not droop control source would not permit any other sources on the bus.]
-
 The maximum current of an AC adapter port is not defined by this standard.
 It is the responsibility of the load to ensure that it does not draw enough
-current to damage its connector or wiring.
+current to damage its own connector or wiring.
 
 ### Over-current Protection
 
@@ -242,12 +242,13 @@ An over-current condition shall be reported using communications as described in
 
 [ Must resume normal operations in TBD seconds. How is resume initiated? ]
 
-[ The over-current condition shall be reported by an LED located near the connector as described in TBD. ???]
+The over-current condition shall be reported by an LED located near the connector 
+as described in *Port Status Indicator*.
 
 If a load device supports communications, it shall report the maximum normal operating current
 of the device at the minimum supply voltage and shall also report the limit and duration of any
 temporary current surges the device may experience such as those related to motor starts, using
-the protocols described in TBD.
+the protocols described in *Communications*.
 
 A load port is recommended but not required to provide over-current protection from faults internal
 to the device that would result in current draws in excess of its rated maximum. Over-current
@@ -256,15 +257,9 @@ but not required. If the device supports communications, it is recommended that 
 be implemented such that communications remain operating even when the primary over-current protection
 has disabled the device so the device may report the fault condition.
 
-The communications protocol is defined to have an inherent maximum current of TBD A
-by sourcing current through a TBD ohm pull-up resistors.
-For more details, see section TBD.
 A fault that shorts the communications pin to either pole will disable communications
 but not have any permanent effect on the device such that communications will resume
 normal operation when the fault is resolved.
-
-[ A load device is recommended but not required to report an over-current fault via
-and LED located near the port as described in section TBD. ??? ]
 
 [ Should we permit temporary current overloads in excess of 8 A? ]
 
@@ -393,7 +388,18 @@ This isolation breaks the ground loop and solves the problem.
 
 ### Cold Start
 
-[ Use communications to stage power on. TBD]
+Grids based on the 12V Link may experience a temporary overload when power is first applied to
+the 12V bus to charge input capacitors and initiate other start-up functions such as
+refrigeration motor starts. Devices without communications but with the ability to control
+their input current through a FET switch are recommended to delay their power-on with a randomly
+selected delay up to TBD seconds to minimize the chance of a startup overload.
+ 
+Loads with communications and the ability to control their input current shall attempt
+to establish communications with the current bus manager before admitting start-up currents.
+If communications can be established with the bus manager, they shall request power from
+the bus manager and delay their start until a power grant message has been received from
+the bus manager. The bus manager shall stage power initiation to reduce the chance of
+an overload. More details of the protocol are contained in the *Communications* section.
 
 ### Port Labeling
 
@@ -430,11 +436,204 @@ is operating normally.
 | blue | 2 | source suppling normal power but without communications |
   
 
-### Communications
+## Communications
 
-[LIN physical with ODGTalk link layer. Details to follow. ]
+Open DC Grid is a managed grid and some functions related to management require communications.
+The different link types have different forms of communications that best fit the intended applications
+of that link so the ODG approach is to support different forms of physical and low layer protocols
+with semantically consistent upper layers so that the different protocol stacks and be easily
+bridged when necessary between different link types.
 
-### 1-Wire Communications
+Communications for the 12V Link is based on the LIN Bus at the physical layer, a unique link layer
+that is optimized for the target applications, a subset of CoAP in the middle layers and an application layer
+homologous to a subset of IEEE 2030.5 (SEP 2) but again, optimized for ODG. Its key features include:
+* Implementation on very small microcontrollers
+* Negligible power consumption for an inactive bus or inactive nodes
+* Automatic address assignment and configuration
+* Peer to peer communications
+* Automatic data rate adaptation of 1 - 20 kbps
+* Operation to 40 m without twisted pairs
+
+The following description of the ODG 12V Link communications approach is based on the traditional
+7-layer OSI communications model. Some of the layers are different from existing standards so
+the entire stack here is referred to as ODGTalk, just to give it a unique label.
+
+### Physical Layer
+
+The physical layer is based on the LIN bus. Implementations can use existing LIN bus transceivers,
+though the selected transceiver must support the full voltage range of V<sub>min_c</sub> to V<sub>max_l</sub>
+for normal operation and V<sub>reverse</sub> to V<sub>ovp</sub> over-voltage and reverse-voltage protection.
+For the following, the voltage observed at a device as the difference between the positive and negative poles
+is referred to as V<sub>bus</sub>. 
+The two LIN signal thresholds are:
+* 80% to 100% of V<sub>bus</sub> recessive signal (serial high)
+* 0% to 20% of V<sub>bus</sub> dominant (serial low)
+
+One node, designated the bus manager, pulls the bus high through a 1K ohm resistor and FET switch to make the
+default state be the recessive state. Transceivers pull the bus down to the dominant signal for signaling.
+
+When used with the 12V Link, all sources shall be capable of assuming the bus manager role and activating
+the associated pull-up. When multiple sources are connected to a bus, a link layer arbitration protocol
+selects which of the bus manager candidates assumes the role. Another link layer protocol permits
+fail safe operation to shift the bus manager role if the original bus manager disconnects for whatever reason.
+
+Signal timing is based on the current data rate for the bus which can vary between 1 kbps and 20 kbps.
+The bus manager selects the bus rate. Other nodes use a synchronization mechanism to automatically
+match the current received bus rate when transmitting. It is possible that a node can fail to
+synchronize due to the physical limitations of a particular installation. In that case, it can
+request a slower data rate by forcing an extended dominant (break) condition on the bus.
+The current bus manager must observe this request and initiate transmission at a slower data rate.
+This process repeats at slower and slower data rates until all nodes synchronize. If synchronization
+cannot be achieved at 1 kbps, communications is declared non-operational and nodes revert to
+their non-communications mode.
+
+### Link Layer
+
+The ODGTalk link layer includes protocols to assign select the bus manager, select the data rate,
+assign local addresses and transmit transmit data frames. The data frame format has been chosen to take
+advantage of power-saving features built into many micro-controllers to minimize the power
+consumption of individual nodes and for the ODGTalk network as a whole.
+
+Whenever a node joins the network by being plugged into a 12V Link bus or by receiving power
+from another source it performs the following steps in sequence.
+
+#### 1. Master Arbitration
+
+When a node capable of being a master joins the network, it must decide if there is an
+existing master, in which case it should join as a normal node, or if there is no master,
+it should assume the master role. Upon initialization such a node first observes the
+bus. It observes network traffic, there must already be a master so it joins as a normal node.
+If there is no traffic observed, it waits for a random delay of TBD and transmits a wakeup
+probe, which is a break of TBD seconds. If a master is already active, the master will
+respond to the wakeup probe and the candidate joins as a normal node. If there is no response
+after TBD seconds, it retries the wakeup probe. If there is not response after TBD retries,
+the candidate activates its master pull-up and assumes the master role.
+
+[ Note that transceivers have a weak built-in pull-up so observing a recessive state is not
+sufficient to ensure that a master already exists. ]  
+
+#### 2. Data Rate Selection
+
+ODGTalk permits dynamic adjustment of the data rate to deal with changing physical conditions on the bus. 
+Each frame transmitted on the bus includes a synchronization field similar to LIN that enables the receiver 
+to automatically set its receive data rate using the timing in the synchronization field. 
+When a device initializes, it observes the bus for activity and if found, it sets it data rate using the observed traffic. 
+If there is no traffic, it sends a wakeup probe, a break sequence, like that used in the master arbitration. 
+This will trigger a wakeup response from the master and the new node can then set its date rate.
+
+Changing physical conditions on the bus can make data transmission unreliable and require the bus to slow down. 
+Any node observing excessive data errors can request  the bus to slow down. There are two methods to do this. 
+If the bus is marginal, any node can send a data errors alert using normal transmission methods to the master. 
+If this does not result in a slow-down sequence, a node can initiate a special slow down alert 
+which is an extended break of TBD seconds. The master observes this event and initiates a slow down sequence.
+A slow down sequence is a broadcast message send to all nodes telling them to reinitialize their data rate. 
+
+[Note that the master hardware must be to determine the length of a break using counters or other mechanisms. - Details TBD.]
+
+#### 3. Address Registration
+
+Each node on the bus has a logical bus address that is assigned dynamically. 
+Once assigned, it responds only to messages to that address or broadcast transmissions which are sent to all nodes.  
+If the device hardware supports a hardware address filter, it can set its assigned address in that filter 
+so that it only wakes on messages to that address.
+
+Part the address registration sequence includes a flag that indicates if the device is using a hardware filter. 
+If it is, the device will not receive a broadcast message. In that case, the master sends each such node a broadcast 
+prime message instructing the node to temporarily disable the address filter until after the broadcast. 
+After it receives the broadcast, it can resume using the filter.
+
+Address registration occurs during node initialization, after the data rate has been established. 
+Address 0 is reserved for the master. Slave nodes can use any of the 15 remaining address. 
+A slave begins by choosing a random address between 1 and 15. 
+To register an address, the registering node sends a registration request to the master using the address it selected. 
+The master sends a registration response to that address indicating whether the registration was successful.  
+If another node has already registered that address, both nodes will receive the response. 
+The node that previously registered that address can ignore the response. 
+The failure response includes an alternative address that the device can adopt. 
+It can also indicate that no more addresses are available in the unlikely case that 15 slaves have already registered.
+
+The address registration message include the 64-bit IP6 address of the node. This can be queried
+by a proxy node to establish the IP6 address of the target node.
+
+#### 4. Data Transmission
+
+Normal data transmission in ODGTalk uses a carrier sense multiple access with collision avoidance (CMSA/CA) mechanism. 
+In this case, a "carrier" is just activity on the bus. A node can send a message to any other node at any time. 
+To send a message, it first observes the bus by enabling data reception. 
+If there is no activity on the bus, the node can send its message immediately. 
+If there is activity, it just delays a random time of TBD seconds and checks again.
+It is still possible that two nodes can start transmitting at the same time causing a collision. 
+All messages must assume the possibility of transmission errors and include a retry mechanism. 
+Collisions are resolved using normal retransmission.
+
+[TBD: receive your own message and watch for data corruption indicating a collision. Abort and retry.]
+
+[TBD: wait for end of transmission by a timeout. Then delay a slot time based on the address.]
+
+#### Frame Format
+
+At the bit level, ODGTalk uses a normal UART format:
+
+* 9-bits / character (9th bit ignored except for address flag)
+* 1 stop bit
+* no parity
+
+The basic frame structure is similar to LIN: 
+
+* break (wake up all transceivers)
+* sync (0x55 to establish the data rate through auto baud rate recognition if not already established)
+* destination address and frame type (includes address flag)
+* source address
+* frame length 
+* message content (0 - 127 bytes)
+* CRC (2-byte CCITT-16)
+
+This frame structure is chosen to enable hardware optimizations built in to many micro-controllers.
+Some devices include auto baud rate detection registers. Most devices include address detection
+using the 9th bit called multiprocessor communications mode. Some devices also include hardware
+support for the calculation of the CRC.
+
+With no bus activity, all transceivers are in sleep mode and all micro-controllers can be in sleep mode.
+Once transmission starts, all transceivers wake up. Micro-controllers with address-recognition hardware
+can stay asleep except for their address compare logic. 
+
+### Network Layer
+
+In normal operation, there is no network layer in ODGTalk. Nodes are incapable of directly communicating
+with nodes outside their own bus, and similarly, there is no direct way for an external network
+to directly access an ODGTalk node. This is for both simplicity and security. The physical span
+of an ODGTalk network is limited to the physical span of one 12V Link.
+
+However, any node that has access to another network such as the Internet, can act as a proxy for
+nodes in ODGTalk. As part of joining the ODGTalk network, a node is required to register its IP6 address with the
+the bus manager. This creates a mapping between an IP6 address and the local address in an ODGTalk network.
+Any node on the ODTTalk network can query this mapping and thus proxy messages between the networks.
+
+In addition, the link layer supports multiple frame types. One of the supported frame types can
+use 6loWPAN-style header compression and packet reassembly to create full IP6 frames.
+This capability is optional for 12V Link nodes. 
+
+### Transport Layer
+
+The core transport layer is based on a subset of CoAP (rfc7252) with exponential back-off.
+Confirmable and non-confirmable messages are supported.
+
+[Details TBD.]
+
+### Session
+
+ODGTalk does not have a session layer. All standard functions are idempotent so message de-duplication
+is not required.
+
+### Presentation and Application
+
+[ This is still being discussed. Alternatives under consideration include a predefined register set
+with vendor extensions similar to Modbus that only supports basic get/set and a richer format 
+based on [ThingSet](https://libre.solar/thingset/). ThingSet supports retrieving a collection
+of data in both text and binary (CBOR) formats with selective retrieval and modification
+via FETCH and iPATCH. ]
+
+## 1-Wire Communications
 
 [ Laptop power adapters typically include an identification ROM in the power supply that can be read by
 the load using the 1-Wire protocol. Currently the content of these ROMs are all proprietary. We could
